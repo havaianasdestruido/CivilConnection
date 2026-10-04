@@ -1,23 +1,24 @@
-# Backend — Sistema de Construção Civil
+# Backend — Civil Connection
 
-## 1. Visão geral e divisão de responsabilidades
+## 1. Visão geral
 
-Como o front roda em **GitHub Pages (estático)**, não existe servidor próprio nele. O backend é dividido em três camadas:
+O backend é **100% Kotlin (Ktor)**. Não há serviços em Node no backend: o Node.js é usado **apenas como ferramenta de build do frontend** (Vite/TypeScript).
 
 | Camada | Tecnologia | Responsabilidade |
 |---|---|---|
+| **Frontend** | React + TypeScript, **estático no GitHub Pages** | Interface; sem servidor |
 | **BaaS** | Supabase (PostgREST, Auth, Storage, Realtime) | CRUD simples direto do front, protegido por RLS |
-| **API de domínio** | **Kotlin + Ktor** | Regras de negócio complexas: medições, cálculo de custos, curva S, orçamento, relatórios |
-| **Serviços auxiliares** | **TypeScript + Node.js (Fastify)** | Webhooks, integrações externas, geração de PDF/RDO, jobs leves |
+| **API de domínio** | **Kotlin + Ktor** | Regras de negócio, cálculos, relatórios/PDF, webhooks, integrações, jobs |
 
 ```
-[React @ GH Pages]
+[React estático @ GitHub Pages]
    │  ├── supabase-js ──────────► Supabase (CRUD + Auth + Storage + Realtime, RLS)
-   │  └── fetch (JWT) ──► API Kotlin (Ktor) ──► Postgres (Supabase)
-   │                    └► Serviço Node/TS ───► Postgres / Storage / APIs externas
+   │  └── fetch (JWT) ──► API Kotlin (Ktor) ──► Postgres (Supabase) / Storage / APIs externas
 ```
 
-**Critério de escolha:** se a operação é só ler/gravar uma tabela respeitando permissões → direto no Supabase. Se envolve regra de negócio, múltiplas tabelas ou cálculo → API Kotlin. Se é integração/glue/IO → Node/TS.
+**Critério de escolha:** CRUD simples respeitando permissões → direto no Supabase. Regra de negócio, múltiplas tabelas, cálculo, PDF, integração ou job → API Kotlin.
+
+> **Importante sobre hospedagem:** o GitHub Pages só serve arquivos estáticos e **não executa Kotlin/JVM**. O front fica 100% no GH Pages; a API Kotlin precisa rodar em um host de containers (seção 5). Isso é inerente ao GH Pages, não uma escolha de arquitetura.
 
 ## 2. API de domínio (Kotlin)
 
@@ -29,8 +30,12 @@ Como o front roda em **GitHub Pages (estático)**, não existe servidor próprio
 | Serialização | `kotlinx.serialization` |
 | Acesso a dados | **Exposed** (ou jOOQ) + HikariCP |
 | Injeção de dependência | Koin |
-| Validação | Konform ou validação manual em camada de domínio |
-| Auth | Plugin `ktor-server-auth-jwt` validando o JWT do Supabase (segredo/JWKS do projeto) |
+| HTTP client | Ktor Client (Supabase Storage, APIs externas) |
+| Auth | `ktor-server-auth-jwt` validando o JWT do Supabase (JWKS do projeto) |
+| Jobs agendados | `db-scheduler` ou Quartz (+ coroutines) |
+| PDF (RDO, medições) | OpenPDF ou Flying Saucer (HTML → PDF) |
+| E-mail | Resend/SES via HTTP (Ktor Client) |
+| Imagens (miniaturas) | Thumbnailator |
 | Testes | JUnit 5, Kotest, Testcontainers (Postgres), MockK |
 | Docs da API | OpenAPI (ktor-openapi) |
 | Lint / formato | ktlint + detekt |
@@ -38,20 +43,23 @@ Como o front roda em **GitHub Pages (estático)**, não existe servidor próprio
 ### Estrutura de pacotes (hexagonal simplificada)
 
 ```
-src/main/kotlin/br/com/obras/
+src/main/kotlin/br/com/civilconnection/
 ├── Application.kt
 ├── config/            # env, DI, plugins Ktor
 ├── auth/              # verificação JWT, extração de organizacao_id e papel
 ├── domain/
 │   ├── obras/
-│   ├── medicoes/      # regras de medição e avanço físico-financeiro
+│   ├── medicoes/      # avanço físico-financeiro
 │   ├── orcamento/     # composição de custos, BDI
 │   └── estoque/
 ├── application/       # casos de uso (services)
 ├── infrastructure/
 │   ├── db/            # repositórios Exposed
-│   └── storage/       # cliente Supabase Storage
-└── api/               # rotas Ktor + DTOs
+│   ├── storage/       # cliente Supabase Storage
+│   ├── pdf/           # geração de RDO e relatórios
+│   ├── mail/
+│   └── jobs/          # tarefas agendadas
+└── api/               # rotas Ktor + DTOs (inclui /webhooks)
 ```
 
 ### Endpoints exemplo
@@ -61,68 +69,51 @@ src/main/kotlin/br/com/obras/
 | `POST` | `/v1/obras/{id}/medicoes` | Registra medição (transacional) |
 | `GET` | `/v1/obras/{id}/curva-s` | Curva S planejado × realizado |
 | `GET` | `/v1/obras/{id}/custos` | Custo orçado × realizado |
+| `GET` | `/v1/diario/{id}/pdf` | Gera PDF do RDO |
 | `POST` | `/v1/orcamentos/importar` | Importa planilha (SINAPI/Excel) |
 | `POST` | `/v1/compras/{id}/aprovar` | Fluxo de aprovação de compra |
+| `POST` | `/webhooks/supabase` | Recebe Database Webhooks (assinatura validada) |
 | `GET` | `/health` | Health check |
 
 ### Segurança
 
-- Valida JWT em toda rota; extrai `sub` (user) e resolve `organizacao_id`/`papel` consultando `membros`.
-- **Conexão ao banco com o usuário/role restrito**, e `set local request.jwt.claims` por transação para manter a RLS efetiva (evitar usar `service_role` para operações de usuário).
-- CORS restrito ao domínio do GitHub Pages (`https://<org>.github.io`) e domínio customizado.
-- Rate limiting (plugin Ktor) e validação de payload.
-- Segredos apenas por variáveis de ambiente (nunca no repositório).
+- Valida JWT em toda rota; extrai `sub` e resolve `organizacao_id`/`papel` consultando `membros`.
+- Conexão ao banco com **role restrita**, aplicando os claims do JWT por transação para manter a RLS efetiva; `service_role` só em tarefas de sistema (jobs, webhooks).
+- CORS restrito a `https://<org>.github.io` (e domínio customizado, se houver).
+- Rate limiting e validação de payload; webhooks com assinatura/segredo compartilhado.
+- Segredos somente por variáveis de ambiente.
 
-## 3. Serviços auxiliares (TypeScript / Node.js)
-
-| Item | Escolha |
-|---|---|
-| Runtime | Node.js 22 LTS |
-| Framework | **Fastify** + `@fastify/cors`, `@fastify/helmet` |
-| Linguagem | TypeScript 5 (`strict: true`) |
-| Validação | Zod |
-| Supabase | `@supabase/supabase-js` (service role **somente** no servidor) |
-| PDF | Playwright (HTML → PDF) ou `pdf-lib` |
-| Jobs | `node-cron` / pg_cron + `pg-boss` (fila em Postgres) |
-| Testes | Vitest + Supertest |
-| Gerenciador de pacotes | pnpm |
-
-Casos de uso: geração de PDF do **RDO** e relatórios de medição, envio de e-mails (Resend/SES), webhooks de Supabase (Database Webhooks), integrações (NF-e, ERP, WhatsApp API), processamento de imagens (miniaturas).
-
-> **Alternativa:** funções leves podem rodar como **Supabase Edge Functions** (Deno/TS) para evitar hospedar mais um serviço.
-
-## 4. Hospedagem
-
-GitHub Pages não executa backend, então:
+## 3. Hospedagem da API
 
 | Componente | Opção sugerida |
 |---|---|
 | API Kotlin | Container Docker em **Fly.io**, **Render** ou **Google Cloud Run** (scale-to-zero) |
-| Serviço Node/TS | Mesmo provedor (container) ou Edge Functions |
 | Banco / Auth / Storage | Supabase Cloud |
+| Frontend | **GitHub Pages** |
 
-Dockerfile Kotlin: build multi-stage (`gradle` → `eclipse-temurin:21-jre`), imagem final < 250 MB.
+Dockerfile: build multi-stage (`gradle` → `eclipse-temurin:21-jre`). Para reduzir cold start em scale-to-zero, considerar CDS/AppCDS ou GraalVM native image.
 
-## 5. CI/CD (GitHub Actions)
+## 4. CI/CD (GitHub Actions)
 
-- **PR:** `ktlint`, `detekt`, testes Kotlin (Testcontainers); `eslint`, `tsc --noEmit`, `vitest` no Node.
-- **Merge na `main`:** build da imagem → push (GHCR) → deploy no provedor → `supabase db push` para migrations.
-- Ambientes `staging` e `production` com secrets separados (`environments` do GitHub).
+- **PR:** `ktlintCheck`, `detekt`, testes (Testcontainers).
+- **Merge na `main`:** build da imagem → push (GHCR) → deploy no provedor → `supabase db push`.
+- Ambientes `staging` e `production` com secrets separados.
 
-## 6. Observabilidade
+## 5. Observabilidade
 
-- Logs estruturados em JSON (Logback + logstash encoder / pino).
-- Métricas Micrometer (Ktor) → Prometheus/Grafana Cloud.
-- Tracing OpenTelemetry (opcional) e Sentry para erros.
-- Correlation ID propagado do front (`X-Request-Id`).
+- Logs JSON (Logback + logstash encoder).
+- Métricas Micrometer → Prometheus/Grafana Cloud.
+- Sentry para erros; OpenTelemetry opcional.
+- `X-Request-Id` propagado do front.
 
-## 7. Variáveis de ambiente (exemplo)
+## 6. Variáveis de ambiente (exemplo)
 
 ```
 SUPABASE_URL=
 SUPABASE_JWKS_URL=
-DATABASE_URL=            # role restrita
-SUPABASE_SERVICE_ROLE_KEY=   # só no serviço Node, nunca no front
+DATABASE_URL=                # role restrita
+SUPABASE_SERVICE_ROLE_KEY=   # só na API, jamais no front
+WEBHOOK_SECRET=
 ALLOWED_ORIGINS=https://<org>.github.io
 SENTRY_DSN=
 ```
