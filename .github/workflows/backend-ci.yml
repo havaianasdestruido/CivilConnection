@@ -49,5 +49,7 @@ jobs:
               echo '```'
               echo '</details>'
             } >> "$GITHUB_STEP_SUMMARY"
+            message=$(tail -200 backend-build.log | sed -e 's/%/%25/g' -e 's/\r/%0D/g' -e 's/$/%0A/' | tr -d '\n')
+            echo "::error title=Backend build failed::$message"
           fi
           exit "$status"
