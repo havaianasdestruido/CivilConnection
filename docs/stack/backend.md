@@ -22,6 +22,9 @@ O backend é **100% Kotlin (Ktor)**. Não há serviços em Node no backend: o No
 
 ## 2. API de domínio (Kotlin)
 
+A implementação fica em `src/back/`; o contrato versionado está em
+`src/back/src/main/resources/openapi.yaml` e as instruções de execução em `src/back/README.md`.
+
 | Item | Escolha |
 |---|---|
 | Linguagem / JVM | Kotlin 2.x, JDK 21 |

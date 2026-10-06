@@ -8,9 +8,9 @@ As specs da stack estão em `docs/stack/`. Em caso de conflito entre este arquiv
 
 | Área | Spec |
 |---|---|
-| Banco de dados | `docs/stack/01-database.md` |
-| Backend | `docs/stack/02-backend.md` |
-| Frontend | `docs/stack/03-frontend.md` |
+| Banco de dados | `docs/stack/db.md` |
+| Backend | `docs/stack/backend.md` |
+| Frontend | `docs/stack/frontend.md` |
 
 Leia só a spec da área em que está trabalhando. Mudanças que alterem decisões de arquitetura devem atualizar a spec no mesmo PR.
 
@@ -26,15 +26,15 @@ Leia só a spec da área em que está trabalhando. Mudanças que alterem decisõ
 ```
 .
 ├── CLAUDE.md
-├── docs/stack/            # specs (01-database, 02-backend, 03-frontend)
-├── supabase/              # migrations/, seed.sql, tests/ (pgTAP)
-├── frontend/              # React + Vite
-├── backend/               # Kotlin/Ktor (Gradle)
-├── .claude/skills/        # skills do projeto (ver seção abaixo)
+├── docs/stack/            # specs de banco, backend e frontend
+├── src/
+│   ├── db/                # migrations, seed e testes SQL
+│   ├── web/               # React + Vite
+│   └── back/              # Kotlin/Ktor (Gradle)
 └── .github/workflows/
 ```
 
-> Se a estrutura real divergir, ajuste esta seção em vez de mover pastas.
+> O código usa a estrutura histórica em `src/`; não mova as áreas sem uma decisão de arquitetura.
 
 ## Regras inegociáveis
 
@@ -75,7 +75,9 @@ cd frontend && pnpm install
 pnpm dev | pnpm lint | pnpm typecheck | pnpm test | pnpm build
 
 # Backend Kotlin
-cd backend && ./gradlew run | ktlintCheck | detekt | test | build
+cd src/back
+./gradlew run
+./gradlew ktlintCheck detekt test build
 ```
 
 ## Definição de pronto (DoD)
