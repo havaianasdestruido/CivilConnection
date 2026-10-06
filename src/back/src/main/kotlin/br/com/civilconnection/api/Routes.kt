@@ -174,10 +174,11 @@ private suspend fun ApplicationCall.receiveLimitedBody(
     while (true) {
         val read = channel.readAvailable(buffer, 0, buffer.size)
         if (read == -1) break
-        if (read == 0) continue
-        total += read
-        if (total > maxBytes) throw ValidationException(errorMessage)
-        output.write(buffer, 0, read)
+        if (read > 0) {
+            total += read
+            if (total > maxBytes) throw ValidationException(errorMessage)
+            output.write(buffer, 0, read)
+        }
     }
     return output.toByteArray()
 }

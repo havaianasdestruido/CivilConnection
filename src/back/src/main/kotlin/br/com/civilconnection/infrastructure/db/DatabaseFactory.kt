@@ -38,7 +38,7 @@ class DatabaseFactory(
     suspend fun ping(): Boolean =
         runCatching {
             newSuspendedTransaction(Dispatchers.IO, database) {
-                exec("select 1") { it.next() && it.getInt(1) == 1 }
+                exec("select 1") { it.next() && it.getInt(1) == 1 } ?: false
             }
         }.getOrDefault(false)
 
@@ -74,5 +74,5 @@ private fun PSQLException.toDomainException(): RuntimeException =
         "23505" -> ConflictException("Já existe um registro com os mesmos dados.")
         "23503" -> ValidationException("Um registro relacionado não existe ou ainda está em uso.")
         "23514", "22P02" -> ValidationException("Os dados informados são inválidos.")
-        else -> this
+        else -> RuntimeException("Falha na operação com o banco de dados.", this)
     }

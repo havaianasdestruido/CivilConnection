@@ -15,7 +15,19 @@ class DiarioServiceTest {
 
     @Test
     fun `gera pdf para diario visivel`() = runBlocking {
-        val diario = DiarioObra(UUID.randomUUID(), UUID.randomUUID(), "Obra", LocalDate.now(), null, null, 2, null, null, emptyList())
+        val diario =
+            DiarioObra(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                "Obra",
+                LocalDate.now(),
+                null,
+                null,
+                2,
+                null,
+                null,
+                emptyList(),
+            )
         val expected = byteArrayOf(1, 2, 3)
         val service = DiarioService(DiarioRepository { _, _ -> diario }, PdfRenderer { expected })
 

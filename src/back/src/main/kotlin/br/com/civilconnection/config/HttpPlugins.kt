@@ -15,7 +15,7 @@ import io.ktor.server.application.install
 import io.ktor.server.plugins.callid.CallId
 import io.ktor.server.plugins.callid.callId
 import io.ktor.server.plugins.calllogging.CallLogging
-import io.ktor.server.plugins.calllogging.callIdMdc
+import io.ktor.server.plugins.calllogging.mdc
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.plugins.cors.routing.CORS
 import io.ktor.server.plugins.statuspages.StatusPages
@@ -58,7 +58,7 @@ private fun Application.configureRequestTracing() {
     }
     install(CallLogging) {
         level = Level.INFO
-        callIdMdc("requestId")
+        mdc("requestId") { call -> call.callId }
         filter { call -> call.request.path() != "/health" }
     }
 }
@@ -83,6 +83,7 @@ private fun Application.configureCors(config: AppConfig) {
 }
 
 private fun Application.configureErrorHandling() {
+    val applicationLog = log
     install(StatusPages) {
         exception<ValidationException> { call, cause ->
             call.respondError(HttpStatusCode.BadRequest, "VALIDACAO", cause.message.orEmpty(), cause.details)
@@ -100,7 +101,7 @@ private fun Application.configureErrorHandling() {
             call.respondError(HttpStatusCode.Conflict, "CONFLITO", cause.message.orEmpty())
         }
         exception<Throwable> { call, cause ->
-            log.error("Erro não tratado em ${call.request.path()}", cause)
+            applicationLog.error("Erro não tratado em ${call.request.path()}", cause)
             call.respondError(
                 HttpStatusCode.InternalServerError,
                 "ERRO_INTERNO",

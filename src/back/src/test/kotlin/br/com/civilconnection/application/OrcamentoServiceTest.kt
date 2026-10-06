@@ -29,7 +29,13 @@ class OrcamentoServiceTest {
 
     @Test
     fun `rejeita arquivo maior que o limite antes de ler`() = runBlocking {
-        val service = OrcamentoService(FakeOrcamentoRepository(), PlanilhaOrcamentoReader { error("não deve ler") }, 1, 10)
+        val service =
+            OrcamentoService(
+                FakeOrcamentoRepository(),
+                PlanilhaOrcamentoReader { error("não deve ler") },
+                1,
+                10,
+            )
 
         assertFailsWith<ValidationException> {
             service.importar(actor, obraId, "SINAPI", byteArrayOf(1, 2))
