@@ -6,7 +6,6 @@ import com.auth0.jwk.JwkProviderBuilder
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
 import io.ktor.server.application.call
-import io.ktor.server.auth.Authentication
 import io.ktor.server.auth.authentication
 import io.ktor.server.auth.jwt.JWTPrincipal
 import io.ktor.server.auth.jwt.jwt
@@ -47,8 +46,9 @@ fun Application.configureAuthentication(
 }
 
 fun io.ktor.server.application.ApplicationCall.actor(): Actor {
-    val subject = principal<JWTPrincipal>()?.payload?.subject
-        ?: throw ValidationException("Identidade do usuário não encontrada no token.")
+    val subject =
+        principal<JWTPrincipal>()?.payload?.subject
+            ?: throw ValidationException("Identidade do usuário não encontrada no token.")
     return Actor(UUID.fromString(subject))
 }
 

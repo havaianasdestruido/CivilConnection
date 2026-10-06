@@ -2,8 +2,8 @@ package br.com.civilconnection.application
 
 import br.com.civilconnection.domain.Actor
 import br.com.civilconnection.domain.CompraAprovada
-import br.com.civilconnection.domain.CustosResumo
 import br.com.civilconnection.domain.CurvaSPoint
+import br.com.civilconnection.domain.CustosResumo
 import br.com.civilconnection.domain.ImportacaoOrcamento
 import br.com.civilconnection.domain.Medicao
 import br.com.civilconnection.domain.NotFoundException
@@ -40,8 +40,9 @@ class DiarioService(
         actor: Actor,
         diarioId: UUID,
     ): ByteArray {
-        val diario = repository.buscar(actor, diarioId)
-            ?: throw NotFoundException("Diário de obra não encontrado.")
+        val diario =
+            repository.buscar(actor, diarioId)
+                ?: throw NotFoundException("Diário de obra não encontrado.")
         return pdfRenderer.renderizarRdo(diario)
     }
 }

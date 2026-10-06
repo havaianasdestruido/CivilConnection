@@ -2,8 +2,8 @@ package br.com.civilconnection.infrastructure.db
 
 import br.com.civilconnection.application.ObraRepository
 import br.com.civilconnection.domain.Actor
-import br.com.civilconnection.domain.CustosResumo
 import br.com.civilconnection.domain.CurvaSPoint
+import br.com.civilconnection.domain.CustosResumo
 import br.com.civilconnection.domain.Medicao
 import br.com.civilconnection.domain.NotFoundException
 import java.math.BigDecimal

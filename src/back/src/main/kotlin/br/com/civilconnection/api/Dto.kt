@@ -1,8 +1,8 @@
 package br.com.civilconnection.api
 
 import br.com.civilconnection.domain.CompraAprovada
-import br.com.civilconnection.domain.CustosResumo
 import br.com.civilconnection.domain.CurvaSPoint
+import br.com.civilconnection.domain.CustosResumo
 import br.com.civilconnection.domain.ImportacaoOrcamento
 import br.com.civilconnection.domain.Medicao
 import kotlinx.serialization.Serializable
@@ -112,5 +112,4 @@ fun ImportacaoOrcamento.toResponse() =
         valorTotal = valorTotal.toPlainString(),
     )
 
-fun CompraAprovada.toResponse() =
-    CompraAprovadaResponse(id.toString(), status, aprovadoEm.toString())
+fun CompraAprovada.toResponse() = CompraAprovadaResponse(id.toString(), status, aprovadoEm.toString())

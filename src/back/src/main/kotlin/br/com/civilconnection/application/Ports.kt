@@ -2,8 +2,8 @@ package br.com.civilconnection.application
 
 import br.com.civilconnection.domain.Actor
 import br.com.civilconnection.domain.CompraAprovada
-import br.com.civilconnection.domain.CustosResumo
 import br.com.civilconnection.domain.CurvaSPoint
+import br.com.civilconnection.domain.CustosResumo
 import br.com.civilconnection.domain.DiarioObra
 import br.com.civilconnection.domain.ImportacaoOrcamento
 import br.com.civilconnection.domain.Medicao

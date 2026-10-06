@@ -157,8 +157,9 @@ private fun Route.webhookRoute(verifier: WebhookVerifier) {
 }
 
 private fun ApplicationCall.requiredUuidQuery(name: String): UUID {
-    val value = request.queryParameters[name]
-        ?: throw ValidationException("Parâmetro obrigatório ausente.", mapOf(name to "Informe um UUID válido."))
+    val value =
+        request.queryParameters[name]
+            ?: throw ValidationException("Parâmetro obrigatório ausente.", mapOf(name to "Informe um UUID válido."))
     return runCatching { UUID.fromString(value) }
         .getOrElse { throw ValidationException("Parâmetro inválido.", mapOf(name to "Informe um UUID válido.")) }
 }

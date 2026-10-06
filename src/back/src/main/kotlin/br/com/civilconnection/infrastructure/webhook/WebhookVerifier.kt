@@ -15,10 +15,11 @@ class WebhookVerifier(
         signatureHeader: String?,
     ): Boolean {
         val provided = signatureHeader?.removePrefix("sha256=")?.hexToBytesOrNull() ?: return false
-        val expected = Mac.getInstance(ALGORITHM).run {
-            init(key)
-            doFinal(payload)
-        }
+        val expected =
+            Mac.getInstance(ALGORITHM).run {
+                init(key)
+                doFinal(payload)
+            }
         return MessageDigest.isEqual(expected, provided)
     }
 

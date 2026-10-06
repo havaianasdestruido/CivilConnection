@@ -96,8 +96,9 @@ class XlsxOrcamentoReader : PlanilhaOrcamentoReader {
     ): BigDecimal {
         val raw = requiredValue(columns, name, formatter, evaluator)
         val normalized = if (raw.contains(',')) raw.replace(".", "").replace(',', '.') else raw
-        val number = normalized.toBigDecimalOrNull()
-            ?: throw ValidationException("Número inválido na linha ${rowNum + 1}.", mapOf("coluna" to name))
+        val number =
+            normalized.toBigDecimalOrNull()
+                ?: throw ValidationException("Número inválido na linha ${rowNum + 1}.", mapOf("coluna" to name))
         if (number < BigDecimal.ZERO) {
             throw ValidationException("Número negativo na linha ${rowNum + 1}.", mapOf("coluna" to name))
         }
