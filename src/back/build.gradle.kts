@@ -84,4 +84,5 @@ tasks.withType<Detekt>().configureEach {
 detekt {
     buildUponDefaultConfig = true
     allRules = false
+    config.setFrom(files("config/detekt/detekt.yml"))
 }
