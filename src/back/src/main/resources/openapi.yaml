@@ -1,0 +1,271 @@
+openapi: 3.1.0
+info:
+  title: Civil Connection API
+  version: 0.1.0
+  description: Operações de domínio do sistema de gestão de obras.
+servers:
+  - url: /
+tags:
+  - name: Operação
+  - name: Obras
+  - name: Diário de obra
+  - name: Orçamento
+  - name: Compras
+  - name: Integrações
+paths:
+  /health:
+    get:
+      tags: [Operação]
+      summary: Verifica se o processo está ativo
+      operationId: health
+      responses:
+        '200':
+          description: Processo ativo
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Health'}
+  /health/ready:
+    get:
+      tags: [Operação]
+      summary: Verifica a conexão com o banco
+      operationId: readiness
+      responses:
+        '200': {description: Serviço pronto}
+        '503': {description: Dependência indisponível}
+  /v1/obras/{id}/medicoes:
+    post:
+      tags: [Obras]
+      summary: Registra ou recalcula a medição mensal
+      operationId: registrarMedicao
+      security: [{supabaseJwt: []}]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                periodo: {type: [string, 'null'], format: date}
+      responses:
+        '201':
+          description: Medição registrada
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Medicao'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /v1/obras/{id}/curva-s:
+    get:
+      tags: [Obras]
+      summary: Obtém a Curva S planejada e realizada
+      operationId: obterCurvaS
+      security: [{supabaseJwt: []}]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Pontos mensais da curva
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [obraId, pontos]
+                properties:
+                  obraId: {type: string, format: uuid}
+                  pontos:
+                    type: array
+                    items: {$ref: '#/components/schemas/CurvaSPoint'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /v1/obras/{id}/custos:
+    get:
+      tags: [Obras]
+      summary: Resume custos da obra
+      operationId: obterCustos
+      security: [{supabaseJwt: []}]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Resumo financeiro
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Custos'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /v1/diario/{id}/pdf:
+    get:
+      tags: [Diário de obra]
+      summary: Gera o PDF do RDO
+      operationId: gerarRdoPdf
+      security: [{supabaseJwt: []}]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: PDF do relatório
+          content:
+            application/pdf:
+              schema: {type: string, contentMediaType: application/pdf}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /v1/orcamentos/importar:
+    post:
+      tags: [Orçamento]
+      summary: Importa itens de uma planilha XLSX
+      operationId: importarOrcamento
+      security: [{supabaseJwt: []}]
+      parameters:
+        - name: obraId
+          in: query
+          required: true
+          schema: {type: string, format: uuid}
+        - name: base
+          in: query
+          schema: {type: string, enum: [SINAPI, TCPO, PROPRIA], default: SINAPI}
+      requestBody:
+        required: true
+        content:
+          application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+            schema: {type: string, contentMediaType: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet}
+      responses:
+        '201':
+          description: Itens importados atomicamente
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ImportacaoOrcamento'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /v1/compras/{id}/aprovar:
+    post:
+      tags: [Compras]
+      summary: Aprova uma compra em rascunho
+      operationId: aprovarCompra
+      security: [{supabaseJwt: []}]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Compra enviada como pedido
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CompraAprovada'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /webhooks/supabase:
+    post:
+      tags: [Integrações]
+      summary: Recebe evento assinado do Supabase
+      operationId: receberWebhookSupabase
+      parameters:
+        - name: X-Webhook-Signature
+          in: header
+          required: true
+          schema: {type: string, pattern: '^sha256=[0-9a-fA-F]{64}$'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, additionalProperties: true}
+      responses:
+        '202': {description: Evento validado e aceito}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+components:
+  securitySchemes:
+    supabaseJwt:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: {type: string, format: uuid}
+  schemas:
+    Health:
+      type: object
+      required: [status, servico]
+      properties:
+        status: {type: string}
+        servico: {type: string}
+    Medicao:
+      type: object
+      required: [id, obraId, periodo, percentualFisicoAcumulado, valorPeriodo, valorAcumulado, status]
+      properties:
+        id: {type: string, format: uuid}
+        obraId: {type: string, format: uuid}
+        periodo: {type: string, format: date}
+        percentualFisicoAcumulado: {$ref: '#/components/schemas/Decimal'}
+        valorPeriodo: {$ref: '#/components/schemas/Decimal'}
+        valorAcumulado: {$ref: '#/components/schemas/Decimal'}
+        status: {type: string, enum: [rascunho, aprovada]}
+    CurvaSPoint:
+      type: object
+      required: [periodo, planejadoPercentual, realizadoPercentual, realizadoValor]
+      properties:
+        periodo: {type: string, format: date}
+        planejadoPercentual: {$ref: '#/components/schemas/Decimal'}
+        realizadoPercentual: {$ref: '#/components/schemas/Decimal'}
+        realizadoValor: {$ref: '#/components/schemas/Decimal'}
+    Custos:
+      type: object
+      required: [obraId, custoOrcado, custoRealizado, saldoOrcamento, comprometidoEmAberto]
+      properties:
+        obraId: {type: string, format: uuid}
+        custoOrcado: {$ref: '#/components/schemas/Decimal'}
+        custoRealizado: {$ref: '#/components/schemas/Decimal'}
+        saldoOrcamento: {$ref: '#/components/schemas/Decimal'}
+        comprometidoEmAberto: {$ref: '#/components/schemas/Decimal'}
+    ImportacaoOrcamento:
+      type: object
+      required: [obraId, itensImportados, valorTotal]
+      properties:
+        obraId: {type: string, format: uuid}
+        itensImportados: {type: integer, minimum: 1}
+        valorTotal: {$ref: '#/components/schemas/Decimal'}
+    CompraAprovada:
+      type: object
+      required: [id, status, aprovadoEm]
+      properties:
+        id: {type: string, format: uuid}
+        status: {type: string, const: pedido}
+        aprovadoEm: {type: string, format: date-time}
+    Decimal:
+      type: string
+      pattern: '^-?[0-9]+(\\.[0-9]+)?$'
+      description: Decimal serializado como string para preservar precisão.
+    Error:
+      type: object
+      required: [codigo, mensagem, detalhes]
+      properties:
+        codigo: {type: string}
+        mensagem: {type: string}
+        detalhes: {type: object, additionalProperties: {type: string}}
+        requestId: {type: [string, 'null']}
+  responses:
+    BadRequest:
+      description: Requisição inválida
+      content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
+    Unauthorized:
+      description: Token ausente ou inválido
+      content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
+    Forbidden:
+      description: Papel sem permissão
+      content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
+    NotFound:
+      description: Recurso inexistente ou invisível pela RLS
+      content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
+    Conflict:
+      description: Estado atual impede a operação
+      content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}

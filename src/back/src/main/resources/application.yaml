@@ -1,0 +1,27 @@
+ktor:
+  application:
+    modules:
+      - br.com.civilconnection.ApplicationKt.module
+  deployment:
+    host: 0.0.0.0
+    port: "$PORT:8080"
+
+app:
+  environment: "$APP_ENV:development"
+  database:
+    url: "$DATABASE_URL:jdbc:postgresql://localhost:54322/postgres"
+    user: "$DATABASE_USER:postgres"
+    password: "$DATABASE_PASSWORD:postgres"
+    maximumPoolSize: "$DATABASE_POOL_SIZE:10"
+  supabase:
+    url: "$SUPABASE_URL:http://localhost:54321"
+    jwksUrl: "$SUPABASE_JWKS_URL:http://localhost:54321/auth/v1/.well-known/jwks.json"
+    jwtIssuer: "$SUPABASE_JWT_ISSUER:http://localhost:54321/auth/v1"
+    jwtAudience: "$SUPABASE_JWT_AUDIENCE:authenticated"
+  http:
+    allowedOrigins: "$ALLOWED_ORIGINS:http://localhost:5173"
+  webhook:
+    secret: "$WEBHOOK_SECRET:development-only-secret"
+  import:
+    maxBytes: "$IMPORT_MAX_BYTES:5242880"
+    maxRows: "$IMPORT_MAX_ROWS:10000"
