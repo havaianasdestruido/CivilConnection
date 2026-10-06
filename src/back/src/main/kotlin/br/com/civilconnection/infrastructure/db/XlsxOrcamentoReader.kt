@@ -23,6 +23,8 @@ class XlsxOrcamentoReader : PlanilhaOrcamentoReader {
             }
         } catch (exception: IOException) {
             throw ValidationException("Não foi possível ler a planilha XLSX.", cause = exception)
+        } catch (exception: IllegalArgumentException) {
+            throw ValidationException("O arquivo enviado não é uma planilha XLSX válida.", cause = exception)
         }
 
     private fun readSheet(
@@ -65,7 +67,7 @@ class XlsxOrcamentoReader : PlanilhaOrcamentoReader {
         formatter: DataFormatter,
         evaluator: FormulaEvaluator,
     ) = OrcamentoItemImportado(
-        codigo = value(columns, "codigo", formatter, evaluator).ifBlank { null },
+        codigo = optionalValue(columns, "codigo", formatter, evaluator).ifBlank { null },
         descricao = requiredValue(columns, "descricao", formatter, evaluator),
         unidade = requiredValue(columns, "unidade", formatter, evaluator),
         quantidade = decimal(columns, "quantidade", formatter, evaluator),
@@ -87,6 +89,16 @@ class XlsxOrcamentoReader : PlanilhaOrcamentoReader {
         formatter: DataFormatter,
         evaluator: FormulaEvaluator,
     ): String = formatter.formatCellValue(getCell(columns.getValue(name)), evaluator).trim()
+
+    private fun Row.optionalValue(
+        columns: Map<String, Int>,
+        name: String,
+        formatter: DataFormatter,
+        evaluator: FormulaEvaluator,
+    ): String {
+        val columnIndex = columns[name] ?: return ""
+        return formatter.formatCellValue(getCell(columnIndex), evaluator).trim()
+    }
 
     private fun Row.decimal(
         columns: Map<String, Int>,

@@ -55,7 +55,7 @@ fun Application.configureDependencyInjection(appConfig: AppConfig) {
         )
     }
 
-    environment.monitor.subscribe(ApplicationStopped) {
+    monitor.subscribe(ApplicationStopped) {
         runCatching { getKoin().get<DatabaseFactory>().close() }
     }
 }

@@ -1,5 +1,6 @@
 package br.com.civilconnection.auth
 
+import br.com.civilconnection.api.ApiError
 import br.com.civilconnection.domain.Actor
 import br.com.civilconnection.domain.ValidationException
 import com.auth0.jwk.JwkProviderBuilder
@@ -7,6 +8,7 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
 import io.ktor.server.application.call
 import io.ktor.server.auth.authentication
+import io.ktor.server.plugins.callid.callId
 import io.ktor.server.auth.jwt.JWTPrincipal
 import io.ktor.server.auth.jwt.jwt
 import io.ktor.server.auth.principal
@@ -38,7 +40,11 @@ fun Application.configureAuthentication(
             challenge { _, _ ->
                 call.respond(
                     HttpStatusCode.Unauthorized,
-                    mapOf("erro" to "Token de acesso ausente, inválido ou expirado."),
+                    ApiError(
+                        codigo = "NAO_AUTENTICADO",
+                        mensagem = "Token de acesso ausente, inválido ou expirado.",
+                        requestId = call.callId,
+                    ),
                 )
             }
         }
