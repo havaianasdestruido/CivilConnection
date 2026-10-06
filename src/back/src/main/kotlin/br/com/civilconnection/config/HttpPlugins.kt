@@ -12,10 +12,11 @@ import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
 import io.ktor.server.application.call
 import io.ktor.server.application.install
+import io.ktor.server.application.log
 import io.ktor.server.plugins.callid.CallId
 import io.ktor.server.plugins.callid.callId
+import io.ktor.server.plugins.callid.callIdMdc
 import io.ktor.server.plugins.calllogging.CallLogging
-import io.ktor.server.plugins.calllogging.mdc
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.plugins.cors.routing.CORS
 import io.ktor.server.plugins.statuspages.StatusPages
@@ -58,7 +59,7 @@ private fun Application.configureRequestTracing() {
     }
     install(CallLogging) {
         level = Level.INFO
-        mdc("requestId") { call -> call.callId }
+        callIdMdc("requestId")
         filter { call -> call.request.path() != "/health" }
     }
 }

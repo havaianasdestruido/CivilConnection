@@ -17,30 +17,32 @@ class OrcamentoServiceTest {
     private val item = OrcamentoItemImportado("001", "Concreto", "m3", BigDecimal.TEN, BigDecimal("25.50"))
 
     @Test
-    fun `normaliza a base e persiste itens validos`() = runBlocking {
-        val repository = FakeOrcamentoRepository()
-        val service = OrcamentoService(repository, PlanilhaOrcamentoReader { listOf(item) }, 1024, 10)
+    fun `normaliza a base e persiste itens validos`() =
+        runBlocking {
+            val repository = FakeOrcamentoRepository()
+            val service = OrcamentoService(repository, PlanilhaOrcamentoReader { listOf(item) }, 1024, 10)
 
-        val result = service.importar(actor, obraId, "sinapi", byteArrayOf(1))
+            val result = service.importar(actor, obraId, "sinapi", byteArrayOf(1))
 
-        assertEquals("SINAPI", repository.base)
-        assertEquals(1, result.itensImportados)
-    }
+            assertEquals("SINAPI", repository.base)
+            assertEquals(1, result.itensImportados)
+        }
 
     @Test
-    fun `rejeita arquivo maior que o limite antes de ler`() = runBlocking {
-        val service =
-            OrcamentoService(
-                FakeOrcamentoRepository(),
-                PlanilhaOrcamentoReader { error("não deve ler") },
-                1,
-                10,
-            )
+    fun `rejeita arquivo maior que o limite antes de ler`() =
+        runBlocking {
+            val service =
+                OrcamentoService(
+                    FakeOrcamentoRepository(),
+                    PlanilhaOrcamentoReader { error("não deve ler") },
+                    1,
+                    10,
+                )
 
-        assertFailsWith<ValidationException> {
-            service.importar(actor, obraId, "SINAPI", byteArrayOf(1, 2))
+            assertFailsWith<ValidationException> {
+                service.importar(actor, obraId, "SINAPI", byteArrayOf(1, 2))
+            }
         }
-    }
 
     private class FakeOrcamentoRepository : OrcamentoRepository {
         var base: String? = null
