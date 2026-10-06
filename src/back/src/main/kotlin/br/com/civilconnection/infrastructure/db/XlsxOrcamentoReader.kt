@@ -67,7 +67,10 @@ class XlsxOrcamentoReader : PlanilhaOrcamentoReader {
         formatter: DataFormatter,
         evaluator: FormulaEvaluator,
     ) = OrcamentoItemImportado(
-        codigo = optionalValue(columns, "codigo", formatter, evaluator).ifBlank { null },
+        codigo =
+            columns["codigo"]
+                ?.let { formatter.formatCellValue(getCell(it), evaluator).trim() }
+                ?.ifBlank { null },
         descricao = requiredValue(columns, "descricao", formatter, evaluator),
         unidade = requiredValue(columns, "unidade", formatter, evaluator),
         quantidade = decimal(columns, "quantidade", formatter, evaluator),
@@ -89,16 +92,6 @@ class XlsxOrcamentoReader : PlanilhaOrcamentoReader {
         formatter: DataFormatter,
         evaluator: FormulaEvaluator,
     ): String = formatter.formatCellValue(getCell(columns.getValue(name)), evaluator).trim()
-
-    private fun Row.optionalValue(
-        columns: Map<String, Int>,
-        name: String,
-        formatter: DataFormatter,
-        evaluator: FormulaEvaluator,
-    ): String {
-        val columnIndex = columns[name] ?: return ""
-        return formatter.formatCellValue(getCell(columnIndex), evaluator).trim()
-    }
 
     private fun Row.decimal(
         columns: Map<String, Int>,
