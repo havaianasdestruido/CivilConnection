@@ -37,7 +37,7 @@ jobs:
         shell: bash
         run: |
           set +e
-          ./gradlew --no-daemon ktlintCheck detekt test build 2>&1 | tee backend-build.log
+          ./gradlew --no-daemon test build ktlintCheck detekt 2>&1 | tee backend-build.log
           status=${PIPESTATUS[0]}
           if [ "$status" -ne 0 ]; then
             {

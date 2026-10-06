@@ -23,8 +23,8 @@ fun Application.configureAuthentication(
 ) {
     val jwkProvider =
         JwkProviderBuilder(URI(jwksUrl).toURL())
-            .cached(10, 24, TimeUnit.HOURS)
-            .rateLimited(10, 1, TimeUnit.MINUTES)
+            .cached(JWK_CACHE_SIZE, JWK_CACHE_HOURS, TimeUnit.HOURS)
+            .rateLimited(JWK_REQUESTS_PER_MINUTE, 1, TimeUnit.MINUTES)
             .build()
 
     authentication {
@@ -51,3 +51,7 @@ fun io.ktor.server.application.ApplicationCall.actor(): Actor {
         ?: throw ValidationException("Identidade do usuário não encontrada no token.")
     return Actor(UUID.fromString(subject))
 }
+
+private const val JWK_CACHE_SIZE = 10L
+private const val JWK_CACHE_HOURS = 24L
+private const val JWK_REQUESTS_PER_MINUTE = 10L

@@ -17,7 +17,9 @@ data class AppConfig(
     init {
         require(allowedOrigins.isNotEmpty()) { "ALLOWED_ORIGINS must contain at least one origin" }
         if (isProduction) {
-            require(webhookSecret.length >= 32) { "WEBHOOK_SECRET must have at least 32 characters in production" }
+            require(webhookSecret.length >= MIN_WEBHOOK_SECRET_LENGTH) {
+                "WEBHOOK_SECRET must have at least $MIN_WEBHOOK_SECRET_LENGTH characters in production"
+            }
             require(allowedOrigins.none { it.contains("localhost") }) {
                 "localhost is not a valid production CORS origin"
             }
@@ -70,3 +72,5 @@ data class SupabaseConfig(
     val jwtIssuer: String,
     val jwtAudience: String,
 )
+
+private const val MIN_WEBHOOK_SECRET_LENGTH = 32

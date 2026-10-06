@@ -7,6 +7,7 @@ import br.com.civilconnection.domain.CurvaSPoint
 import br.com.civilconnection.domain.ImportacaoOrcamento
 import br.com.civilconnection.domain.Medicao
 import br.com.civilconnection.domain.NotFoundException
+import br.com.civilconnection.domain.OrcamentoItemImportado
 import br.com.civilconnection.domain.ValidationException
 import java.time.LocalDate
 import java.util.UUID
@@ -57,16 +58,29 @@ class OrcamentoService(
         base: String,
         conteudo: ByteArray,
     ): ImportacaoOrcamento {
+        validarArquivo(conteudo)
+        val baseNormalizada = validarBase(base)
+        val itens = reader.ler(conteudo)
+        validarItens(itens)
+        return repository.importar(actor, obraId, baseNormalizada, itens)
+    }
+
+    private fun validarArquivo(conteudo: ByteArray) {
         if (conteudo.isEmpty()) throw ValidationException("A planilha está vazia.")
         if (conteudo.size > maxBytes) throw ValidationException("A planilha excede o limite de tamanho.")
-        val baseNormalizada = base.uppercase()
-        if (baseNormalizada !in BASES_SUPORTADAS) {
+    }
+
+    private fun validarBase(base: String): String {
+        val normalizada = base.uppercase()
+        if (normalizada !in BASES_SUPORTADAS) {
             throw ValidationException("Base de orçamento inválida.", mapOf("base" to "Use SINAPI, TCPO ou PROPRIA."))
         }
-        val itens = reader.ler(conteudo)
+        return normalizada
+    }
+
+    private fun validarItens(itens: List<OrcamentoItemImportado>) {
         if (itens.isEmpty()) throw ValidationException("Nenhum item válido foi encontrado na planilha.")
         if (itens.size > maxRows) throw ValidationException("A planilha excede o limite de $maxRows itens.")
-        return repository.importar(actor, obraId, baseNormalizada, itens)
     }
 
     private companion object {

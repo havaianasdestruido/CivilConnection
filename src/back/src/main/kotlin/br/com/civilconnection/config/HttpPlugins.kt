@@ -28,6 +28,13 @@ import java.time.format.DateTimeParseException
 import java.util.UUID
 
 fun Application.configureHttpPlugins(config: AppConfig) {
+    configureSerialization()
+    configureRequestTracing()
+    configureCors(config)
+    configureErrorHandling()
+}
+
+private fun Application.configureSerialization() {
     install(ContentNegotiation) {
         json(
             Json {
@@ -37,20 +44,26 @@ fun Application.configureHttpPlugins(config: AppConfig) {
             },
         )
     }
+}
 
+private fun Application.configureRequestTracing() {
     install(CallId) {
         retrieveFromHeader(HttpHeaders.XRequestId)
-        verify { it.length in 8..128 && it.all { char -> char.isLetterOrDigit() || char in "-_." } }
+        verify {
+            it.length in MIN_REQUEST_ID_LENGTH..MAX_REQUEST_ID_LENGTH &&
+                it.all { char -> char.isLetterOrDigit() || char in "-_." }
+        }
         generate { UUID.randomUUID().toString() }
         replyToHeader(HttpHeaders.XRequestId)
     }
-
     install(CallLogging) {
         level = Level.INFO
         callIdMdc("requestId")
         filter { call -> call.request.path() != "/health" }
     }
+}
 
+private fun Application.configureCors(config: AppConfig) {
     install(CORS) {
         config.allowedOrigins.forEach { origin ->
             val uri = URI(origin)
@@ -60,18 +73,16 @@ fun Application.configureHttpPlugins(config: AppConfig) {
             val authority = if (uri.port == -1) uri.host else "${uri.host}:${uri.port}"
             allowHost(authority, schemes = listOf(uri.scheme))
         }
-        allowMethod(HttpMethod.Get)
-        allowMethod(HttpMethod.Post)
-        allowMethod(HttpMethod.Put)
-        allowMethod(HttpMethod.Patch)
-        allowMethod(HttpMethod.Delete)
-        allowHeader(HttpHeaders.Authorization)
-        allowHeader(HttpHeaders.ContentType)
-        allowHeader(HttpHeaders.XRequestId)
+        listOf(HttpMethod.Get, HttpMethod.Post, HttpMethod.Put, HttpMethod.Patch, HttpMethod.Delete)
+            .forEach { method -> allowMethod(method) }
+        listOf(HttpHeaders.Authorization, HttpHeaders.ContentType, HttpHeaders.XRequestId)
+            .forEach { header -> allowHeader(header) }
         exposeHeader(HttpHeaders.XRequestId)
-        maxAgeInSeconds = 3600
+        maxAgeInSeconds = CORS_MAX_AGE_SECONDS
     }
+}
 
+private fun Application.configureErrorHandling() {
     install(StatusPages) {
         exception<ValidationException> { call, cause ->
             call.respondError(HttpStatusCode.BadRequest, "VALIDACAO", cause.message.orEmpty(), cause.details)
@@ -107,3 +118,7 @@ private suspend fun io.ktor.server.application.ApplicationCall.respondError(
 ) {
     respond(status, ApiError(code, message, details, callId))
 }
+
+private const val MIN_REQUEST_ID_LENGTH = 8
+private const val MAX_REQUEST_ID_LENGTH = 128
+private const val CORS_MAX_AGE_SECONDS = 3600L

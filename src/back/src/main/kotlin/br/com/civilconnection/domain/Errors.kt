@@ -8,7 +8,8 @@ sealed class DomainException(
 class ValidationException(
     message: String,
     val details: Map<String, String> = emptyMap(),
-) : DomainException(message)
+    cause: Throwable? = null,
+) : DomainException(message, cause)
 
 class NotFoundException(
     message: String,
