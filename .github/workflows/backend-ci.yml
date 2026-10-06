@@ -27,11 +27,27 @@ jobs:
       run:
         working-directory: src/back
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '21'
       - uses: gradle/actions/setup-gradle@v4
       - name: Verify backend
-        run: ./gradlew --no-daemon ktlintCheck detekt test build
+        shell: bash
+        run: |
+          set +e
+          ./gradlew --no-daemon ktlintCheck detekt test build 2>&1 | tee backend-build.log
+          status=${PIPESTATUS[0]}
+          if [ "$status" -ne 0 ]; then
+            {
+              echo '## Backend build failure'
+              echo '<details><summary>Last 300 lines</summary>'
+              echo
+              echo '```text'
+              tail -300 backend-build.log
+              echo '```'
+              echo '</details>'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+          exit "$status"
